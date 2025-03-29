@@ -93,26 +93,51 @@ def calculate_adx(data, period=14):
 
 def calculate_obv(data):
     """Calculate On-Balance Volume (OBV)"""
+    if data.empty or 'Close' not in data.columns:
+        # Return an empty series if data is invalid
+        return pd.Series()
+        
     obv = pd.Series(index=data.index)
     obv.iloc[0] = 0
 
     for i in range(1, len(data)):
-        if data['Close'].iloc[i] > data['Close'].iloc[i-1]:
-            obv.iloc[i] = obv.iloc[i-1] + data['Volume'].iloc[i]
-        elif data['Close'].iloc[i] < data['Close'].iloc[i-1]:
-            obv.iloc[i] = obv.iloc[i-1] - data['Volume'].iloc[i]
+        # Convert to float to avoid Series comparison
+        current_close = float(data['Close'].iloc[i])
+        prev_close = float(data['Close'].iloc[i-1])
+        current_volume = float(data['Volume'].iloc[i])
+        prev_obv = float(obv.iloc[i-1])
+        
+        if current_close > prev_close:
+            obv.iloc[i] = prev_obv + current_volume
+        elif current_close < prev_close:
+            obv.iloc[i] = prev_obv - current_volume
         else:
-            obv.iloc[i] = obv.iloc[i-1]
+            obv.iloc[i] = prev_obv
             
     return obv
 
 def calculate_pivot_points(data):
     """Calculate Pivot Points (traditional method)"""
-    pivot = (data['High'].iloc[-1] + data['Low'].iloc[-1] + data['Close'].iloc[-1]) / 3
-    s1 = (2 * pivot) - data['High'].iloc[-1]
-    s2 = pivot - (data['High'].iloc[-1] - data['Low'].iloc[-1])
-    r1 = (2 * pivot) - data['Low'].iloc[-1]
-    r2 = pivot + (data['High'].iloc[-1] - data['Low'].iloc[-1])
+    if data.empty:
+        # Return default values if data is empty
+        return {
+            'pivot': 0,
+            'support1': 0,
+            'support2': 0,
+            'resistance1': 0,
+            'resistance2': 0
+        }
+        
+    # Convert to float to avoid Series comparison issues
+    high = float(data['High'].iloc[-1])
+    low = float(data['Low'].iloc[-1])
+    close = float(data['Close'].iloc[-1])
+    
+    pivot = (high + low + close) / 3
+    s1 = (2 * pivot) - high
+    s2 = pivot - (high - low)
+    r1 = (2 * pivot) - low
+    r2 = pivot + (high - low)
     
     return {
         'pivot': pivot,
@@ -284,13 +309,18 @@ def perform_technical_analysis(data):
     signals['OBV'] = 'INCREASING (Bullish)' if obv > obv_prev else 'DECREASING (Bearish)'
     
     # Pivot Points
-    if current_price > pivot_points['pivot']:
-        if current_price > pivot_points['resistance1']:
+    current_price_float = float(current_price)
+    pivot_float = float(pivot_points['pivot'])
+    resistance1_float = float(pivot_points['resistance1'])
+    support1_float = float(pivot_points['support1'])
+    
+    if current_price_float > pivot_float:
+        if current_price_float > resistance1_float:
             signals['Pivot Points'] = 'ABOVE R1 (Bullish)'
         else:
             signals['Pivot Points'] = 'ABOVE PIVOT (Bullish)'
     else:
-        if current_price < pivot_points['support1']:
+        if current_price_float < support1_float:
             signals['Pivot Points'] = 'BELOW S1 (Bearish)'
         else:
             signals['Pivot Points'] = 'BELOW PIVOT (Bearish)'
@@ -333,7 +363,7 @@ def perform_technical_analysis(data):
     - Moving Averages: The stock is {'above' if signals['SMA 50'] == 'BUY' else 'below'} its 50-day SMA and {'above' if signals['SMA 200'] == 'BUY' else 'below'} its 200-day SMA.
     - RSI: Currently at {rsi:.2f}, indicating the stock is {'overbought' if rsi > 70 else 'oversold' if rsi < 30 else 'neither overbought nor oversold'}.
     - MACD: The MACD line is {'above' if macd > macd_signal else 'below'} the signal line, suggesting {'bullish' if macd > macd_signal else 'bearish'} momentum.
-    - Bollinger Bands: The price is {'above the upper band' if current_price > bb_upper else 'below the lower band' if current_price < bb_lower else 'within the bands'}.
+    - Bollinger Bands: The price is {'above the upper band' if current_price_float > bb_upper else 'below the lower band' if current_price_float < bb_lower else 'within the bands'}.
     
     The ADX value of {adx:.2f} indicates a {'strong' if adx > 25 else 'weak'} trend in the market, suggesting that the signals from trend-following indicators should be given {'higher' if adx > 25 else 'lower'} weight.
     """
