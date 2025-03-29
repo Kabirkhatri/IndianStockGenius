@@ -10,6 +10,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import datetime
 from dateutil.relativedelta import relativedelta
 
+# Set fixed random seeds for consistent prediction results
+np.random.seed(42)  # This ensures numpy's random number generator is consistent
+
 def prepare_features(data):
     """
     Prepare features for price prediction
@@ -62,6 +65,9 @@ def train_prediction_model(df, target_days=30):
     Returns:
         tuple: (model, scaler, features, metrics)
     """
+    # Set fixed seed for sklearn to ensure consistent model results
+    import sklearn
+    sklearn.utils.check_random_state(42)
     # Create target variable: future price
     df['Target'] = df['Close'].shift(-target_days)
     
@@ -192,23 +198,19 @@ def predict_future_prices(model, scaler, features, last_data, periods):
                     # If any error occurs, use default value
                     volatility_value = current_price * 0.01
                 
-                # Calculate adjustment
-                volatility = float(volatility_value) * np.sqrt(days / 10)
-                adjustment = float(np.random.normal(0, volatility * 0.5))
-                
-                # Ensure the prediction is positive and has reasonable bounds
-                # Use explicit float() to guarantee we're working with scalars
+                # Removed random adjustment to provide consistent results
+                # Apply simple upper and lower bounds instead
                 lower_bound = float(current_price * 0.5)
                 upper_bound = float(current_price * 2.0)
                 
-                # Apply bounds
-                prediction_with_adj = float(prediction) + float(adjustment)
-                if prediction_with_adj < lower_bound:
+                # Apply bounds directly to the prediction
+                if prediction < lower_bound:
                     prediction = lower_bound
-                elif prediction_with_adj > upper_bound:
+                elif prediction > upper_bound:
                     prediction = upper_bound
-                else:
-                    prediction = prediction_with_adj
+                
+                # Ensure the prediction is a float scalar
+                prediction = float(prediction)
                 
                 # Final safety check to ensure we have a scalar
                 predictions[period_name] = float(prediction)
