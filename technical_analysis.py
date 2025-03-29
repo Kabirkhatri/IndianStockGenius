@@ -174,20 +174,20 @@ def get_technical_indicators(data):
             round(stoch_k, 2), round(stoch_d, 2)
         ],
         'Signal': [
-            'Bullish' if current_close > sma_20 else 'Bearish',
-            'Bullish' if current_close > sma_50 else 'Bearish',
-            'Bullish' if current_close > sma_200 else 'Bearish',
-            'Bullish' if current_close > ema_20 else 'Bearish',
-            'Bullish' if current_close > ema_50 else 'Bearish',
-            'Overbought' if rsi > 70 else 'Oversold' if rsi < 30 else 'Neutral',
-            'Bullish' if macd_val > 0 else 'Bearish',
-            'Bullish' if macd_val > macd_signal else 'Bearish',
-            'Bullish' if macd_hist > 0 else 'Bearish',
-            'Near Resistance' if current_close > bb_middle and current_close < bb_upper else 'Neutral',
+            'Bullish' if float(current_close) > float(sma_20) else 'Bearish',
+            'Bullish' if float(current_close) > float(sma_50) else 'Bearish',
+            'Bullish' if float(current_close) > float(sma_200) else 'Bearish',
+            'Bullish' if float(current_close) > float(ema_20) else 'Bearish',
+            'Bullish' if float(current_close) > float(ema_50) else 'Bearish',
+            'Overbought' if float(rsi) > 70 else 'Oversold' if float(rsi) < 30 else 'Neutral',
+            'Bullish' if float(macd_val) > 0 else 'Bearish',
+            'Bullish' if float(macd_val) > float(macd_signal) else 'Bearish',
+            'Bullish' if float(macd_hist) > 0 else 'Bearish',
+            'Near Resistance' if float(current_close) > float(bb_middle) and float(current_close) < float(bb_upper) else 'Neutral',
             'Neutral',
-            'Near Support' if current_close < bb_middle and current_close > bb_lower else 'Neutral',
-            'Overbought' if stoch_k > 80 else 'Oversold' if stoch_k < 20 else 'Neutral',
-            'Overbought' if stoch_d > 80 else 'Oversold' if stoch_d < 20 else 'Neutral'
+            'Near Support' if float(current_close) < float(bb_middle) and float(current_close) > float(bb_lower) else 'Neutral',
+            'Overbought' if float(stoch_k) > 80 else 'Oversold' if float(stoch_k) < 20 else 'Neutral',
+            'Overbought' if float(stoch_d) > 80 else 'Oversold' if float(stoch_d) < 20 else 'Neutral'
         ]
     }
     
