@@ -45,15 +45,20 @@ def prepare_features(data):
     df['Volume_Change'] = df['Volume'].pct_change()
     df['Volume_MA5'] = df['Volume'].rolling(window=5).mean()
     df['Volume_MA10'] = df['Volume'].rolling(window=10).mean()
-    df['Volume_Ratio'] = df['Volume'] / df['Volume_MA5']
+    # Ensure Volume_Ratio is calculated correctly as a scalar division, not DataFrame division
+    df['Volume_Ratio'] = df['Volume'].values / df['Volume_MA5'].values
     
     # Price range
-    df['High_Low_Range'] = (df['High'] - df['Low']) / df['Close']
+    df['High_Low_Range'] = (df['High'].values - df['Low'].values) / df['Close'].values
     df['High_Low_Range_MA5'] = df['High_Low_Range'].rolling(window=5).mean()
     
     # Trend indicators
-    df['Above_MA20'] = (df['Close'] > df['MA20']).astype(int)
-    df['Above_MA50'] = (df['Close'] > df['MA50']).astype(int)
+    # Use NumPy arrays for element-wise comparison instead of Series comparison
+    close_array = df['Close'].values
+    ma20_array = df['MA20'].values
+    ma50_array = df['MA50'].values
+    df['Above_MA20'] = (close_array > ma20_array).astype(int)
+    df['Above_MA50'] = (close_array > ma50_array).astype(int)
     
     # Lagged features (previous days' closing prices)
     for i in range(1, 6):
@@ -128,7 +133,8 @@ def train_prediction_model(df, target_days=30):
     r2 = r2_score(y_test, y_pred)
     
     # Calculate MAPE (Mean Absolute Percentage Error)
-    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+    # Handle potential division by zero or very small values
+    mape = np.mean(np.abs((y_test - y_pred) / np.maximum(y_test, 1e-10))) * 100
     
     metrics = {
         'MAE': round(mae, 2),
@@ -183,7 +189,11 @@ def predict_future_prices(model, scaler, features, last_data, periods):
             prediction = current_price * ((1 + monthly_return) ** months)
         
         # Add some controlled variability for different time horizons
-        volatility = last_data['Volatility_20'].iloc[-1] * np.sqrt(days / 20)
+        # Handle possible NaN or zero values in volatility
+        volatility_value = last_data['Volatility_20'].iloc[-1]
+        if np.isnan(volatility_value) or volatility_value == 0:
+            volatility_value = current_price * 0.01  # Default to 1% of price if volatility is missing
+        volatility = volatility_value * np.sqrt(days / 20)
         adjustment = np.random.normal(0, volatility * 0.5)
         
         # Ensure the prediction is positive and has reasonable bounds
@@ -236,8 +246,21 @@ def create_prediction_chart(data, predictions, symbol):
     prediction_items = sorted(prediction_dates.items(), key=lambda x: x[1])
     
     # Create prediction line
-    pred_x = [last_date] + [date for _, date in prediction_items]
-    pred_y = [data['Close'].iloc[-1]] + [predictions[period] for period, _ in prediction_items]
+    # Ensure we have proper data types in our arrays
+    try:
+        pred_x = [last_date] + [date for _, date in prediction_items]
+        pred_y = [float(data['Close'].iloc[-1])] + [float(predictions[period]) for period, _ in prediction_items]
+    except (ValueError, TypeError) as e:
+        # Handle potential conversion errors
+        pred_x = [last_date] + [date for _, date in prediction_items]
+        current_price = float(data['Close'].iloc[-1]) if not np.isnan(data['Close'].iloc[-1]) else 0.0
+        pred_y = [current_price]
+        for period, _ in prediction_items:
+            try:
+                pred_y.append(float(predictions[period]))
+            except (ValueError, TypeError):
+                # Use a reasonable default based on current price
+                pred_y.append(current_price)
     
     fig.add_trace(
         go.Scatter(
@@ -252,18 +275,24 @@ def create_prediction_chart(data, predictions, symbol):
     
     # Add markers for each prediction point
     for i, (period, date) in enumerate(prediction_items):
-        fig.add_trace(
-            go.Scatter(
-                x=[date],
-                y=[predictions[period]],
-                mode='markers+text',
-                name=f'{period} Projection',
-                text=f'{period}: ₹{predictions[period]:.2f}',
-                textposition='top center',
-                marker=dict(size=10, color='green'),
-                showlegend=False
+        try:
+            # Handle any potential type conversion issues
+            prediction_value = float(predictions[period])
+            fig.add_trace(
+                go.Scatter(
+                    x=[date],
+                    y=[prediction_value],
+                    mode='markers+text',
+                    name=f'{period} Projection',
+                    text=f'{period}: ₹{prediction_value:.2f}',
+                    textposition='top center',
+                    marker=dict(size=10, color='green'),
+                    showlegend=False
+                )
             )
-        )
+        except (TypeError, ValueError, KeyError) as e:
+            # Skip this prediction point if there's an error
+            continue
     
     # Format chart
     fig.update_layout(
