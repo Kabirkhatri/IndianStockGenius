@@ -24,9 +24,12 @@ def identify_double_top(data, window=20, threshold=0.03):
     # Find peaks
     peaks = []
     for i in range(1, len(recent_data) - 1):
-        if recent_data['High'].iloc[i] > recent_data['High'].iloc[i-1] and \
-           recent_data['High'].iloc[i] > recent_data['High'].iloc[i+1]:
-            peaks.append((i, recent_data['High'].iloc[i]))
+        high_i = float(recent_data['High'].iloc[i])
+        high_prev = float(recent_data['High'].iloc[i-1])
+        high_next = float(recent_data['High'].iloc[i+1])
+        
+        if high_i > high_prev and high_i > high_next:
+            peaks.append((i, high_i))
     
     # Need at least 2 peaks
     if len(peaks) < 2:
@@ -47,7 +50,7 @@ def identify_double_top(data, window=20, threshold=0.03):
             
         # Check for trough between peaks
         trough_idx = peak1_idx + np.argmin(recent_data['Low'].iloc[peak1_idx:peak2_idx].values)
-        trough_val = recent_data['Low'].iloc[trough_idx]
+        trough_val = float(recent_data['Low'].iloc[trough_idx])
         
         # Trough should be significantly lower
         if (peak1_val - trough_val) / peak1_val < threshold * 2:
@@ -79,9 +82,12 @@ def identify_double_bottom(data, window=20, threshold=0.03):
     # Find bottoms
     bottoms = []
     for i in range(1, len(recent_data) - 1):
-        if recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i-1] and \
-           recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i+1]:
-            bottoms.append((i, recent_data['Low'].iloc[i]))
+        low_i = float(recent_data['Low'].iloc[i])
+        low_prev = float(recent_data['Low'].iloc[i-1])
+        low_next = float(recent_data['Low'].iloc[i+1])
+        
+        if low_i < low_prev and low_i < low_next:
+            bottoms.append((i, low_i))
     
     # Need at least 2 bottoms
     if len(bottoms) < 2:
@@ -102,7 +108,7 @@ def identify_double_bottom(data, window=20, threshold=0.03):
             
         # Check for peak between bottoms
         peak_idx = bottom1_idx + np.argmax(recent_data['High'].iloc[bottom1_idx:bottom2_idx].values)
-        peak_val = recent_data['High'].iloc[peak_idx]
+        peak_val = float(recent_data['High'].iloc[peak_idx])
         
         # Peak should be significantly higher
         if (peak_val - bottom1_val) / bottom1_val < threshold * 2:
@@ -134,11 +140,15 @@ def identify_head_and_shoulders(data, window=30, threshold=0.03):
     # Find peaks
     peaks = []
     for i in range(2, len(recent_data) - 2):
-        if recent_data['High'].iloc[i] > recent_data['High'].iloc[i-1] and \
-           recent_data['High'].iloc[i] > recent_data['High'].iloc[i-2] and \
-           recent_data['High'].iloc[i] > recent_data['High'].iloc[i+1] and \
-           recent_data['High'].iloc[i] > recent_data['High'].iloc[i+2]:
-            peaks.append((i, recent_data['High'].iloc[i]))
+        high_i = float(recent_data['High'].iloc[i])
+        high_prev1 = float(recent_data['High'].iloc[i-1])
+        high_prev2 = float(recent_data['High'].iloc[i-2])
+        high_next1 = float(recent_data['High'].iloc[i+1])
+        high_next2 = float(recent_data['High'].iloc[i+2])
+        
+        if high_i > high_prev1 and high_i > high_prev2 and \
+           high_i > high_next1 and high_i > high_next2:
+            peaks.append((i, high_i))
     
     # Need at least 3 peaks
     if len(peaks) < 3:
@@ -188,11 +198,15 @@ def identify_inverse_head_and_shoulders(data, window=30, threshold=0.03):
     # Find bottoms
     bottoms = []
     for i in range(2, len(recent_data) - 2):
-        if recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i-1] and \
-           recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i-2] and \
-           recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i+1] and \
-           recent_data['Low'].iloc[i] < recent_data['Low'].iloc[i+2]:
-            bottoms.append((i, recent_data['Low'].iloc[i]))
+        low_i = float(recent_data['Low'].iloc[i])
+        low_prev1 = float(recent_data['Low'].iloc[i-1])
+        low_prev2 = float(recent_data['Low'].iloc[i-2])
+        low_next1 = float(recent_data['Low'].iloc[i+1])
+        low_next2 = float(recent_data['Low'].iloc[i+2])
+        
+        if low_i < low_prev1 and low_i < low_prev2 and \
+           low_i < low_next1 and low_i < low_next2:
+            bottoms.append((i, low_i))
     
     # Need at least 3 bottoms
     if len(bottoms) < 3:
@@ -244,8 +258,8 @@ def identify_bullish_flag(data, window=20, threshold=0.03):
     uptrend_data = recent_data[:uptrend_window]
     
     # Calculate trend strength
-    uptrend_start = uptrend_data['Close'].iloc[0]
-    uptrend_end = uptrend_data['Close'].iloc[-1]
+    uptrend_start = float(uptrend_data['Close'].iloc[0])
+    uptrend_end = float(uptrend_data['Close'].iloc[-1])
     uptrend_strength = (uptrend_end - uptrend_start) / uptrend_start
     
     # Must have strong uptrend
@@ -256,15 +270,15 @@ def identify_bullish_flag(data, window=20, threshold=0.03):
     consolidation_data = recent_data[uptrend_window:]
     
     # Calculate highest and lowest in consolidation
-    high = consolidation_data['High'].max()
-    low = consolidation_data['Low'].min()
+    high = float(consolidation_data['High'].max())
+    low = float(consolidation_data['Low'].min())
     
     # Consolidation range should be narrow
     if (high - low) / low > threshold * 2:
         return False
     
     # Current close should be near the bottom of range (ready to breakout)
-    current_close = recent_data['Close'].iloc[-1]
+    current_close = float(recent_data['Close'].iloc[-1])
     if (current_close - low) / (high - low) > 0.7:
         return False
     
@@ -294,8 +308,8 @@ def identify_bearish_flag(data, window=20, threshold=0.03):
     downtrend_data = recent_data[:downtrend_window]
     
     # Calculate trend strength
-    downtrend_start = downtrend_data['Close'].iloc[0]
-    downtrend_end = downtrend_data['Close'].iloc[-1]
+    downtrend_start = float(downtrend_data['Close'].iloc[0])
+    downtrend_end = float(downtrend_data['Close'].iloc[-1])
     downtrend_strength = (downtrend_start - downtrend_end) / downtrend_start
     
     # Must have strong downtrend
@@ -306,15 +320,15 @@ def identify_bearish_flag(data, window=20, threshold=0.03):
     consolidation_data = recent_data[downtrend_window:]
     
     # Calculate highest and lowest in consolidation
-    high = consolidation_data['High'].max()
-    low = consolidation_data['Low'].min()
+    high = float(consolidation_data['High'].max())
+    low = float(consolidation_data['Low'].min())
     
     # Consolidation range should be narrow
     if (high - low) / low > threshold * 2:
         return False
     
     # Current close should be near the top of range (ready to breakdown)
-    current_close = recent_data['Close'].iloc[-1]
+    current_close = float(recent_data['Close'].iloc[-1])
     if (high - current_close) / (high - low) > 0.7:
         return False
     
@@ -411,14 +425,15 @@ def create_pattern_chart(data, patterns):
     # Add pattern annotations
     if patterns:
         annotations = []
-        y_pos = data['High'].max() * 1.05
+        high_max = float(data['High'].max())
+        y_pos = high_max * 1.05
         
         for i, (pattern, bias) in enumerate(patterns.items()):
             color = "green" if bias == "Bullish" else "red"
             annotations.append(
                 dict(
                     x=data.index[-1],
-                    y=y_pos - (i * data['High'].max() * 0.03),
+                    y=y_pos - (i * high_max * 0.03),
                     xref="x",
                     yref="y",
                     text=f"{pattern} (⯀ {bias})",

@@ -80,6 +80,13 @@ if selected_stock and analyze_button:
             # Fetch data
             stock_data = fetch_stock_data(selected_stock, start_date, end_date)
             
+            # Initialize analysis result variables to None
+            tech_analysis_results = None
+            fund_analysis_results = None
+            sentiment_results = None
+            pattern_results = None
+            prediction_results = None
+            
             if stock_data.empty:
                 st.error(f"Could not fetch data for {selected_stock}. Please try another stock.")
             else:
@@ -98,9 +105,16 @@ if selected_stock and analyze_button:
                     # Display basic stats
                     col1, col2, col3, col4 = st.columns(4)
                     current_price = float(stock_data['Close'].iloc[-1])
-                    prev_close = float(stock_data['Close'].iloc[-2]) if len(stock_data) > 1 else None
-                    day_change = None if prev_close is None else (current_price - prev_close)
-                    day_change_pct = None if prev_close is None else (day_change / prev_close * 100)
+                    
+                    # Calculate day change and percentage safely
+                    if len(stock_data) > 1:
+                        prev_close = float(stock_data['Close'].iloc[-2])
+                        day_change = float(current_price - prev_close)
+                        day_change_pct = float(day_change / prev_close * 100)
+                    else:
+                        prev_close = None
+                        day_change = None
+                        day_change_pct = None
                     
                     col1.metric("Current Price", f"₹{current_price:.2f}")
                     
