@@ -13,6 +13,7 @@ from sentiment_analysis import perform_sentiment_analysis
 from chart_patterns import identify_chart_patterns
 from price_prediction import predict_prices
 from report_generator import generate_report
+from model_validation import validate_model_with_past_data, compare_prediction_timeframes
 from utils import plot_stock_data, plot_technical_indicators, time_periods
 
 # Page configuration
@@ -336,6 +337,44 @@ if selected_stock and analyze_button:
                     # Prediction factors
                     st.write("Key Factors Influencing Predictions")
                     st.write(prediction_results['prediction_factors'])
+                    
+                    # Model Validation Section
+                    st.subheader("Model Validation on Historical Data")
+                    st.write("This section tests the model on past data to assess its real-world accuracy.")
+                    
+                    # Run validation for 30-day predictions
+                    validation_results = validate_model_with_past_data(stock_data, periods_back=6, prediction_days=30)
+                    
+                    if validation_results["error"] is None:
+                        # Display validation accuracy
+                        st.metric(
+                            label="Validation Accuracy", 
+                            value=f"{validation_results['accuracy']:.1f}%",
+                            delta="Based on historical validation"
+                        )
+                        
+                        # Show validation chart
+                        st.plotly_chart(validation_results['validation_chart'])
+                        
+                        # Display validation results table
+                        st.write("Historical Validation Results")
+                        st.dataframe(validation_results['validation_results'])
+                        
+                        st.info("The validation chart shows how accurate the model would have been if used to predict 30-day prices at earlier points in time. Higher accuracy indicates more reliable predictions.")
+                    else:
+                        st.warning(f"Could not perform validation: {validation_results['error']}")
+                        
+                    # Compare different prediction timeframes
+                    st.subheader("Prediction Accuracy by Timeframe")
+                    timeframe_comparison = compare_prediction_timeframes(stock_data, selected_stock, [7, 30, 90])
+                    
+                    if timeframe_comparison["error"] is None:
+                        st.plotly_chart(timeframe_comparison['comparison_chart'])
+                        
+                        if timeframe_comparison['best_timeframe']:
+                            st.success(f"The model performs best on {timeframe_comparison['best_timeframe']}-day predictions for this stock.")
+                    else:
+                        st.warning(f"Could not compare timeframes: {timeframe_comparison['error']}")
                 
                 # Report tab
                 with tabs[6]:
