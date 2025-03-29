@@ -20,59 +20,31 @@ def prepare_features(data):
     Returns:
         pd.DataFrame: DataFrame with features
     """
-    # Create a copy and reset the index to avoid alignment issues
+    # Create a fresh copy with reset index - critical for avoiding dimension issues
     df = data.copy().reset_index(drop=True)
     
-    # Add basic technical indicators as features
-    # Moving averages
+    # Only use the most reliable and simple features to avoid dimension errors
+    # Simple moving averages
     df['MA5'] = df['Close'].rolling(window=5).mean()
     df['MA10'] = df['Close'].rolling(window=10).mean()
     df['MA20'] = df['Close'].rolling(window=20).mean()
-    df['MA50'] = df['Close'].rolling(window=50).mean()
     
-    # Price momentum
-    df['Price_Momentum_1'] = df['Close'].pct_change(periods=1)
-    df['Price_Momentum_5'] = df['Close'].pct_change(periods=5)
-    df['Price_Momentum_10'] = df['Close'].pct_change(periods=10)
-    df['Price_Momentum_20'] = df['Close'].pct_change(periods=20)
+    # Simple price changes (safer than complex momentum calculations)
+    df['Price_Change_1'] = df['Close'].pct_change(periods=1)
+    df['Price_Change_5'] = df['Close'].pct_change(periods=5)
     
-    # Volatility
-    df['Volatility_5'] = df['Close'].rolling(window=5).std()
-    df['Volatility_10'] = df['Close'].rolling(window=10).std()
-    df['Volatility_20'] = df['Close'].rolling(window=20).std()
+    # Basic volatility - just a single window to keep it simple
+    df['Volatility'] = df['Close'].rolling(window=10).std()
     
-    # Simplified indicators without complex calculations to avoid dimension issues
-    # Volume indicators - just basic statistics that don't require complex operations
+    # Volume change - simple single metric
     df['Volume_Change'] = df['Volume'].pct_change()
-    df['Volume_MA5'] = df['Volume'].rolling(window=5).mean()
-    df['Volume_MA10'] = df['Volume'].rolling(window=10).mean()
     
-    # Skip Volume_Ratio calculation for now to avoid dimension issues
-    df['Volume_Ratio'] = 1.0  # Use a constant placeholder
+    # Simple price range
+    df['Price_Range'] = (df['High'] - df['Low']) / df['Close'].replace(0, 1e-10)
     
-    # Price range - simplified to avoid dimension issues
-    df['High_Low_Range'] = (df['High'] - df['Low']).div(df['Close'].replace(0, 1e-10))
-    df['High_Low_Range_MA5'] = df['High_Low_Range'].rolling(window=5).mean()
-    
-    # Trend indicators
-    # Ensure alignment before comparison
-    close = df['Close']
-    ma20 = df['MA20']
-    ma50 = df['MA50']
-    
-    # Use numpy operations which don't require alignment
-    df['Above_MA20'] = np.where(close.values > ma20.values, 1, 0)
-    df['Above_MA50'] = np.where(close.values > ma50.values, 1, 0)
-    
-    # Lagged features (previous days' closing prices)
-    for i in range(1, 6):
+    # Use 3 lag days instead of 5 to reduce feature dimensionality
+    for i in range(1, 4):
         df[f'Close_Lag_{i}'] = df['Close'].shift(i)
-    
-    # Date-based features
-    if isinstance(df.index, pd.DatetimeIndex):
-        df['Day_of_Week'] = df.index.dayofweek
-        df['Month'] = df.index.month
-        df['Quarter'] = df.index.quarter
     
     # Drop rows with NaN values
     df = df.dropna()
@@ -96,20 +68,15 @@ def train_prediction_model(df, target_days=30):
     # Drop rows with NaN in target
     df = df.dropna()
     
-    # Select features
+    # Select only the features we actually calculated in prepare_features
     features = [
-        'MA5', 'MA10', 'MA20', 'MA50',
-        'Price_Momentum_1', 'Price_Momentum_5', 'Price_Momentum_10', 'Price_Momentum_20',
-        'Volatility_5', 'Volatility_10', 'Volatility_20',
-        'Volume_Change', 'Volume_MA5', 'Volume_MA10', 'Volume_Ratio',
-        'High_Low_Range', 'High_Low_Range_MA5',
-        'Above_MA20', 'Above_MA50',
-        'Close_Lag_1', 'Close_Lag_2', 'Close_Lag_3', 'Close_Lag_4', 'Close_Lag_5'
+        'MA5', 'MA10', 'MA20',
+        'Price_Change_1', 'Price_Change_5',
+        'Volatility',
+        'Volume_Change',
+        'Price_Range',
+        'Close_Lag_1', 'Close_Lag_2', 'Close_Lag_3'
     ]
-    
-    # If we have date features, add them
-    if 'Day_of_Week' in df.columns:
-        features.extend(['Day_of_Week', 'Month', 'Quarter'])
     
     # Prepare X and y
     X = df[features]
@@ -193,11 +160,17 @@ def predict_future_prices(model, scaler, features, last_data, periods):
             prediction = current_price * ((1 + monthly_return) ** months)
         
         # Add some controlled variability for different time horizons
-        # Handle possible NaN or zero values in volatility
-        volatility_value = last_data['Volatility_20'].iloc[-1]
-        if np.isnan(volatility_value) or volatility_value == 0:
-            volatility_value = current_price * 0.01  # Default to 1% of price if volatility is missing
-        volatility = volatility_value * np.sqrt(days / 20)
+        # Handle possible NaN or zero values in volatility - use our simplified volatility
+        try:
+            # Try to get our simplified volatility column
+            volatility_value = last_data['Volatility'].iloc[-1]
+            if np.isnan(volatility_value) or volatility_value == 0:
+                volatility_value = current_price * 0.01  # Default to 1% of price if volatility is missing
+        except (KeyError, IndexError):
+            # If volatility column doesn't exist, use default value
+            volatility_value = current_price * 0.01
+            
+        volatility = volatility_value * np.sqrt(days / 10)  # Adjusted for our 10-day volatility window
         adjustment = np.random.normal(0, volatility * 0.5)
         
         # Ensure the prediction is positive and has reasonable bounds
@@ -362,14 +335,18 @@ def predict_prices(data, symbol):
         if feature.startswith('MA'):
             period = feature[2:]
             key_factors.append(f"The {period}-day moving average is an important indicator, affecting projections by {importance*100:.1f}%")
-        elif feature.startswith('Price_Momentum'):
+        elif feature.startswith('Price_Change'):
             period = feature.split('_')[2]
-            key_factors.append(f"Price momentum over {period} days is influential, contributing {importance*100:.1f}% to the forecast")
-        elif feature.startswith('Volatility'):
-            period = feature.split('_')[1]
-            key_factors.append(f"Market volatility over {period} days impacts projections by {importance*100:.1f}%")
+            key_factors.append(f"Price movement over {period} days is influential, contributing {importance*100:.1f}% to the forecast")
+        elif feature == 'Volatility':
+            key_factors.append(f"Market volatility impacts projections by {importance*100:.1f}%")
         elif feature.startswith('Volume'):
             key_factors.append(f"Trading volume patterns affect the prediction by {importance*100:.1f}%")
+        elif feature == 'Price_Range':
+            key_factors.append(f"The daily price range is a significant factor with {importance*100:.1f}% influence")
+        elif feature.startswith('Close_Lag'):
+            lag = feature.split('_')[2]
+            key_factors.append(f"The closing price from {lag} days ago influences the prediction by {importance*100:.1f}%")
         else:
             key_factors.append(f"The {feature.replace('_', ' ').lower()} is a significant factor with {importance*100:.1f}% influence")
     
