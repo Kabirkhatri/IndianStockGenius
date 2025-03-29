@@ -45,11 +45,19 @@ def prepare_features(data):
     df['Volume_Change'] = df['Volume'].pct_change()
     df['Volume_MA5'] = df['Volume'].rolling(window=5).mean()
     df['Volume_MA10'] = df['Volume'].rolling(window=10).mean()
-    # Calculate Volume_Ratio using pandas built-in division
-    df['Volume_Ratio'] = df['Volume'] / df['Volume_MA5']
+    # Calculate Volume_Ratio using element-wise division to ensure we get a single Series
+    volume_np = df['Volume'].to_numpy()
+    volume_ma5_np = df['Volume_MA5'].to_numpy()
+    # Add small epsilon to avoid division by zero
+    df['Volume_Ratio'] = pd.Series(volume_np / (volume_ma5_np + 1e-10), index=df.index)
     
     # Price range
-    df['High_Low_Range'] = (df['High'] - df['Low']) / df['Close']
+    # Use numpy operations to ensure element-wise operations result in a 1D array
+    high_np = df['High'].to_numpy()
+    low_np = df['Low'].to_numpy()
+    close_np = df['Close'].to_numpy()
+    # Add small epsilon to avoid division by zero
+    df['High_Low_Range'] = pd.Series((high_np - low_np) / (close_np + 1e-10), index=df.index)
     df['High_Low_Range_MA5'] = df['High_Low_Range'].rolling(window=5).mean()
     
     # Trend indicators
