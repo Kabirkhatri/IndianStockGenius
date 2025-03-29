@@ -102,15 +102,15 @@ if selected_stock and analyze_button:
                     day_change = None if prev_close is None else (current_price - prev_close)
                     day_change_pct = None if prev_close is None else (day_change / prev_close * 100)
                     
-                    col1.metric("Current Price", f"₹{current_price:.2f}")
+                    col1.metric("Current Price", f"₹{float(current_price):.2f}")
                     
                     if day_change is not None:
                         col2.metric("Day Change", 
-                                   f"₹{day_change:.2f}", 
-                                   f"{day_change_pct:.2f}%")
+                                   f"₹{float(day_change):.2f}", 
+                                   f"{float(day_change_pct):.2f}%")
                     
-                    col3.metric("52W High", f"₹{stock_data['High'].max():.2f}")
-                    col4.metric("52W Low", f"₹{stock_data['Low'].min():.2f}")
+                    col3.metric("52W High", f"₹{float(stock_data['High'].max()):.2f}")
+                    col4.metric("52W Low", f"₹{float(stock_data['Low'].min()):.2f}")
                 
                 # Technical Analysis tab
                 with tabs[1]:
@@ -253,8 +253,8 @@ if selected_stock and analyze_button:
                     
                     projection_df = pd.DataFrame({
                         'Time Period': [time_periods[period] for period in prediction_results['projections'].keys()],
-                        'Projected Price (₹)': [f"₹{price:.2f}" for price in prediction_results['projections'].values()],
-                        'Change (%)': [f"{((price / stock_data['Close'].iloc[-1]) - 1) * 100:.2f}%" 
+                        'Projected Price (₹)': [f"₹{float(price):.2f}" for price in prediction_results['projections'].values()],
+                        'Change (%)': [f"{float(((price / stock_data['Close'].iloc[-1]) - 1) * 100):.2f}%" 
                                       for price in prediction_results['projections'].values()]
                     })
                     st.dataframe(projection_df)
@@ -298,7 +298,7 @@ if selected_stock and analyze_button:
                     
                     # Display target price
                     st.markdown("<h4 style='text-align: center;'>Target Price (1 Year): "
-                               f"₹{report['target_price']:.2f}</h4>", unsafe_allow_html=True)
+                               f"₹{float(report['target_price']):.2f}</h4>", unsafe_allow_html=True)
                     
                     # Display comprehensive analysis
                     st.write("Analysis Summary")

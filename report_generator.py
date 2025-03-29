@@ -162,13 +162,13 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
         
         # Add specific indicator insights
         if 'RSI' in tech_analysis['signals']:
-            key_points.append(f"RSI: {tech_analysis['signals']['RSI']}")
+            key_points.append(f"RSI: {str(tech_analysis['signals']['RSI'])}")
         
         if 'MACD' in tech_analysis['signals']:
-            key_points.append(f"MACD: {tech_analysis['signals']['MACD']}")
+            key_points.append(f"MACD: {str(tech_analysis['signals']['MACD'])}")
         
         if 'MA Cross' in tech_analysis['signals']:
-            key_points.append(f"Moving Averages: {tech_analysis['signals']['MA Cross']}")
+            key_points.append(f"Moving Averages: {str(tech_analysis['signals']['MA Cross'])}")
     
     # Fundamental analysis points
     if fund_analysis:
@@ -191,8 +191,8 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
     
     # Price prediction points
     if prediction_results:
-        current_price = stock_data['Close'].iloc[-1]
-        one_year_projection = prediction_results['projections']['1y']
+        current_price = float(stock_data['Close'].iloc[-1])
+        one_year_projection = float(prediction_results['projections']['1y'])
         expected_return = ((one_year_projection / current_price) - 1) * 100
         
         key_points.append(f"1-Year Price Target: ₹{one_year_projection:.2f} ({expected_return:.2f}% from current price)")
@@ -216,16 +216,17 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
         risks.append("Negative market sentiment could persist in the short term")
     
     # Generate comprehensive summary
+    current_price = float(stock_data['Close'].iloc[-1])
     summary = f"""
     After conducting comprehensive analysis of {symbol} using technical, fundamental, and sentiment analysis, our recommendation is to {recommendation}.
     
-    The stock is currently trading at ₹{stock_data['Close'].iloc[-1]:.2f} with a one-year price target of ₹{target_price:.2f}, representing a potential {'gain' if target_price > stock_data['Close'].iloc[-1] else 'loss'} of {abs((target_price / stock_data['Close'].iloc[-1] - 1) * 100):.2f}%.
+    The stock is currently trading at ₹{current_price:.2f} with a one-year price target of ₹{float(target_price):.2f}, representing a potential {'gain' if float(target_price) > current_price else 'loss'} of {abs((float(target_price) / current_price - 1) * 100):.2f}%.
     
     {reasoning}
     
-    {'Technical indicators suggest a ' + tech_analysis['sentiment'].lower() + ' trend, ' if tech_analysis else ''}
-    {'with the stock appearing ' + fund_analysis['evaluations']['overall_valuation'].lower() + ' based on fundamental metrics. ' if fund_analysis else ''}
-    {'Market sentiment is ' + sentiment_analysis['sentiment_category'].lower() + '. ' if sentiment_analysis else ''}
+    {'Technical indicators suggest a ' + str(tech_analysis['sentiment']).lower() + ' trend, ' if tech_analysis else ''}
+    {'with the stock appearing ' + str(fund_analysis['evaluations']['overall_valuation']).lower() + ' based on fundamental metrics. ' if fund_analysis else ''}
+    {'Market sentiment is ' + str(sentiment_analysis['sentiment_category']).lower() + '. ' if sentiment_analysis else ''}
     
     Investors should consider their investment goals, risk tolerance, and time horizon before making any investment decisions.
     """
@@ -259,10 +260,10 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
         <div class="section">
             <h2>Investment Recommendation</h2>
             <div class="recommendation {'buy' if recommendation == 'BUY' else 'hold' if recommendation == 'HOLD' else 'sell'}">{recommendation}</div>
-            <p><strong>Target Price (1 Year):</strong> ₹{target_price:.2f}</p>
-            <p><strong>Current Price:</strong> ₹{stock_data['Close'].iloc[-1]:.2f}</p>
-            <p><strong>Potential Return:</strong> {((target_price / stock_data['Close'].iloc[-1] - 1) * 100):.2f}%</p>
-            <p><strong>Confidence Level:</strong> {confidence:.1f}%</p>
+            <p><strong>Target Price (1 Year):</strong> ₹{float(target_price):.2f}</p>
+            <p><strong>Current Price:</strong> ₹{current_price:.2f}</p>
+            <p><strong>Potential Return:</strong> {((float(target_price) / current_price - 1) * 100):.2f}%</p>
+            <p><strong>Confidence Level:</strong> {float(confidence):.1f}%</p>
         </div>
         
         <div class="section">
@@ -285,7 +286,7 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
                     <th>Projected Price</th>
                     <th>Potential Return</th>
                 </tr>
-                {''.join(f'<tr><td>{period}</td><td>₹{price:.2f}</td><td>{((price / stock_data["Close"].iloc[-1] - 1) * 100):.2f}%</td></tr>' for period, price in prediction_results["projections"].items()) if prediction_results else '<tr><td colspan="3">No price projections available</td></tr>'}
+                {''.join(f'<tr><td>{period}</td><td>₹{float(price):.2f}</td><td>{((float(price) / current_price - 1) * 100):.2f}%</td></tr>' for period, price in prediction_results["projections"].items()) if prediction_results else '<tr><td colspan="3">No price projections available</td></tr>'}
             </table>
         </div>
         
@@ -298,17 +299,17 @@ def generate_report(stock_data, symbol, tech_analysis=None, fund_analysis=None,
         
         <div class="section">
             <h2>Technical Analysis</h2>
-            {f'<p>{tech_analysis["summary"]}</p>' if tech_analysis else '<p>Technical analysis not performed</p>'}
+            {f'<p>{str(tech_analysis["summary"])}</p>' if tech_analysis else '<p>Technical analysis not performed</p>'}
         </div>
         
         <div class="section">
             <h2>Fundamental Analysis</h2>
-            {f'<p>{fund_analysis["summary"]}</p>' if fund_analysis else '<p>Fundamental analysis not performed</p>'}
+            {f'<p>{str(fund_analysis["summary"])}</p>' if fund_analysis else '<p>Fundamental analysis not performed</p>'}
         </div>
         
         <div class="section">
             <h2>Sentiment Analysis</h2>
-            {f'<p>{sentiment_analysis["summary"]}</p>' if sentiment_analysis else '<p>Sentiment analysis not performed</p>'}
+            {f'<p>{str(sentiment_analysis["summary"])}</p>' if sentiment_analysis else '<p>Sentiment analysis not performed</p>'}
         </div>
         
         <div class="footer">
