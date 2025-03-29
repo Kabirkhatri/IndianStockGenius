@@ -20,8 +20,8 @@ def prepare_features(data):
     Returns:
         pd.DataFrame: DataFrame with features
     """
-    # Create a copy to avoid modifying the original data
-    df = data.copy()
+    # Create a copy and reset the index to avoid alignment issues
+    df = data.copy().reset_index(drop=True)
     
     # Add basic technical indicators as features
     # Moving averages
@@ -55,9 +55,14 @@ def prepare_features(data):
     df['High_Low_Range_MA5'] = df['High_Low_Range'].rolling(window=5).mean()
     
     # Trend indicators
-    # Use pandas comparison directly
-    df['Above_MA20'] = (df['Close'] > df['MA20']).astype(int)
-    df['Above_MA50'] = (df['Close'] > df['MA50']).astype(int)
+    # Ensure alignment before comparison
+    close = df['Close']
+    ma20 = df['MA20']
+    ma50 = df['MA50']
+    
+    # Use numpy operations which don't require alignment
+    df['Above_MA20'] = np.where(close.values > ma20.values, 1, 0)
+    df['Above_MA50'] = np.where(close.values > ma50.values, 1, 0)
     
     # Lagged features (previous days' closing prices)
     for i in range(1, 6):
@@ -316,8 +321,12 @@ def predict_prices(data, symbol):
     Returns:
         dict: Dictionary with prediction results
     """
-    # Prepare features
-    df = prepare_features(data)
+    # Prepare features and ensure we have a clean, aligned dataframe
+    try:
+        df = prepare_features(data)
+    except Exception as e:
+        # Try with a clean, reset DataFrame
+        df = prepare_features(data.copy().reset_index(drop=True))
     
     # Define prediction periods in days
     periods = {
