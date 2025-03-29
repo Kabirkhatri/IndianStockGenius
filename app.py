@@ -51,16 +51,13 @@ else:
         format_func=lambda x: f"{x} - {default_stocks[default_stocks['Symbol'] == x]['Company Name'].values[0]}"
     )
 
-# Date range selection
+# Fixed one-year analysis period
 st.sidebar.header("Analysis Period")
 end_date = datetime.date.today()
 start_date = end_date - relativedelta(years=1)
 
-start_date = st.sidebar.date_input("Start date", value=start_date)
-end_date = st.sidebar.date_input("End date", value=end_date)
-
-if start_date > end_date:
-    st.sidebar.error("Start date must be before end date")
+# Show the fixed one-year period without allowing changes
+st.sidebar.info(f"Analysis period: One year from {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}")
 
 # Analysis options
 st.sidebar.header("Analysis Options")
@@ -334,8 +331,8 @@ if selected_stock and analyze_button:
                     styled_df = projection_df.style.applymap(color_signal, subset=['Signal'])
                     st.dataframe(styled_df, use_container_width=True)
                     
-                    # Display prediction chart
-                    st.plotly_chart(prediction_results['prediction_chart'])
+                    # Chart removed as requested
+                    # st.plotly_chart(prediction_results['prediction_chart'])
                     
                     # Model metrics with clearer display
                     st.subheader("Model Performance Metrics")
