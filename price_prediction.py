@@ -45,20 +45,17 @@ def prepare_features(data):
     df['Volume_Change'] = df['Volume'].pct_change()
     df['Volume_MA5'] = df['Volume'].rolling(window=5).mean()
     df['Volume_MA10'] = df['Volume'].rolling(window=10).mean()
-    # Ensure Volume_Ratio is calculated correctly as a scalar division, not DataFrame division
-    df['Volume_Ratio'] = df['Volume'].values / df['Volume_MA5'].values
+    # Calculate Volume_Ratio using pandas built-in division
+    df['Volume_Ratio'] = df['Volume'] / df['Volume_MA5']
     
     # Price range
-    df['High_Low_Range'] = (df['High'].values - df['Low'].values) / df['Close'].values
+    df['High_Low_Range'] = (df['High'] - df['Low']) / df['Close']
     df['High_Low_Range_MA5'] = df['High_Low_Range'].rolling(window=5).mean()
     
     # Trend indicators
-    # Use NumPy arrays for element-wise comparison instead of Series comparison
-    close_array = df['Close'].values
-    ma20_array = df['MA20'].values
-    ma50_array = df['MA50'].values
-    df['Above_MA20'] = (close_array > ma20_array).astype(int)
-    df['Above_MA50'] = (close_array > ma50_array).astype(int)
+    # Use pandas comparison directly
+    df['Above_MA20'] = (df['Close'] > df['MA20']).astype(int)
+    df['Above_MA50'] = (df['Close'] > df['MA50']).astype(int)
     
     # Lagged features (previous days' closing prices)
     for i in range(1, 6):
