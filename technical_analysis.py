@@ -244,19 +244,24 @@ def perform_technical_analysis(data):
     signals = {}
     
     # Moving Averages
-    signals['SMA 20'] = 'BUY' if current_price > float(indicators_df[indicators_df['Indicator'] == 'SMA(20)']['Value']) else 'SELL'
-    signals['SMA 50'] = 'BUY' if current_price > float(indicators_df[indicators_df['Indicator'] == 'SMA(50)']['Value']) else 'SELL'
-    signals['SMA 200'] = 'BUY' if current_price > float(indicators_df[indicators_df['Indicator'] == 'SMA(200)']['Value']) else 'SELL'
-    signals['EMA 20'] = 'BUY' if current_price > float(indicators_df[indicators_df['Indicator'] == 'EMA(20)']['Value']) else 'SELL'
-    signals['EMA 50'] = 'BUY' if current_price > float(indicators_df[indicators_df['Indicator'] == 'EMA(50)']['Value']) else 'SELL'
+    current_price_float = float(current_price)
+    sma_20_val = float(indicators_df[indicators_df['Indicator'] == 'SMA(20)']['Value'].iloc[0])
+    sma_50_val = float(indicators_df[indicators_df['Indicator'] == 'SMA(50)']['Value'].iloc[0])
+    sma_200_val = float(indicators_df[indicators_df['Indicator'] == 'SMA(200)']['Value'].iloc[0])
+    ema_20_val = float(indicators_df[indicators_df['Indicator'] == 'EMA(20)']['Value'].iloc[0])
+    ema_50_val = float(indicators_df[indicators_df['Indicator'] == 'EMA(50)']['Value'].iloc[0])
+    
+    signals['SMA 20'] = 'BUY' if current_price_float > sma_20_val else 'SELL'
+    signals['SMA 50'] = 'BUY' if current_price_float > sma_50_val else 'SELL'
+    signals['SMA 200'] = 'BUY' if current_price_float > sma_200_val else 'SELL'
+    signals['EMA 20'] = 'BUY' if current_price_float > ema_20_val else 'SELL'
+    signals['EMA 50'] = 'BUY' if current_price_float > ema_50_val else 'SELL'
     
     # Golden/Death Cross
-    sma_50 = float(indicators_df[indicators_df['Indicator'] == 'SMA(50)']['Value'])
-    sma_200 = float(indicators_df[indicators_df['Indicator'] == 'SMA(200)']['Value'])
-    signals['MA Cross'] = 'GOLDEN CROSS (BUY)' if sma_50 > sma_200 else 'DEATH CROSS (SELL)'
+    signals['MA Cross'] = 'GOLDEN CROSS (BUY)' if sma_50_val > sma_200_val else 'DEATH CROSS (SELL)'
     
     # RSI
-    rsi = float(indicators_df[indicators_df['Indicator'] == 'RSI(14)']['Value'])
+    rsi = float(indicators_df[indicators_df['Indicator'] == 'RSI(14)']['Value'].iloc[0])
     if rsi > 70:
         signals['RSI'] = 'SELL (Overbought)'
     elif rsi < 30:
@@ -265,9 +270,9 @@ def perform_technical_analysis(data):
         signals['RSI'] = 'NEUTRAL'
     
     # MACD
-    macd = float(indicators_df[indicators_df['Indicator'] == 'MACD']['Value'])
-    macd_signal = float(indicators_df[indicators_df['Indicator'] == 'MACD Signal']['Value'])
-    macd_hist = float(indicators_df[indicators_df['Indicator'] == 'MACD Histogram']['Value'])
+    macd = float(indicators_df[indicators_df['Indicator'] == 'MACD']['Value'].iloc[0])
+    macd_signal = float(indicators_df[indicators_df['Indicator'] == 'MACD Signal']['Value'].iloc[0])
+    macd_hist = float(indicators_df[indicators_df['Indicator'] == 'MACD Histogram']['Value'].iloc[0])
     
     if macd > macd_signal and macd_hist > 0:
         signals['MACD'] = 'BUY'
@@ -277,20 +282,20 @@ def perform_technical_analysis(data):
         signals['MACD'] = 'NEUTRAL'
     
     # Bollinger Bands
-    bb_upper = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Upper']['Value'])
-    bb_middle = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Middle']['Value'])
-    bb_lower = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Lower']['Value'])
+    bb_upper = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Upper']['Value'].iloc[0])
+    bb_middle = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Middle']['Value'].iloc[0])
+    bb_lower = float(indicators_df[indicators_df['Indicator'] == 'Bollinger Lower']['Value'].iloc[0])
     
-    if current_price > bb_upper:
+    if current_price_float > bb_upper:
         signals['Bollinger Bands'] = 'SELL (Upper Band Resistance)'
-    elif current_price < bb_lower:
+    elif current_price_float < bb_lower:
         signals['Bollinger Bands'] = 'BUY (Lower Band Support)'
     else:
         signals['Bollinger Bands'] = 'NEUTRAL'
     
     # Stochastic
-    stoch_k = float(indicators_df[indicators_df['Indicator'] == 'Stochastic %K']['Value'])
-    stoch_d = float(indicators_df[indicators_df['Indicator'] == 'Stochastic %D']['Value'])
+    stoch_k = float(indicators_df[indicators_df['Indicator'] == 'Stochastic %K']['Value'].iloc[0])
+    stoch_d = float(indicators_df[indicators_df['Indicator'] == 'Stochastic %D']['Value'].iloc[0])
     
     if stoch_k > 80 and stoch_d > 80:
         signals['Stochastic'] = 'SELL (Overbought)'
