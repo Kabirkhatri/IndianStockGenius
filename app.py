@@ -276,19 +276,63 @@ if selected_stock and analyze_button:
                             delta="Based on backtesting"
                         )
                     
-                    # Display price predictions for different time periods
-                    st.write("Price Projections")
+                    # Display price predictions for different time periods with buy/sell recommendations
+                    st.write("Price Projections with Buy/Sell Signals")
                     
                     current_close = float(stock_data['Close'].iloc[-1])
                     projection_periods = list(prediction_results['projections'].keys())
                     projection_prices = [float(price) for price in prediction_results['projections'].values()]
                     
+                    # Calculate percent changes
+                    percent_changes = [((price / current_close) - 1) * 100 for price in projection_prices]
+                    
+                    # Determine buy/sell signals based on percent change
+                    signals = []
+                    signal_colors = []
+                    
+                    for change in percent_changes:
+                        if change > 5:
+                            signals.append("STRONG BUY")
+                            signal_colors.append("green")
+                        elif change > 2:
+                            signals.append("BUY")
+                            signal_colors.append("lightgreen")
+                        elif change > -2:
+                            signals.append("HOLD")
+                            signal_colors.append("orange")
+                        elif change > -5:
+                            signals.append("SELL")
+                            signal_colors.append("lightcoral")
+                        else:
+                            signals.append("STRONG SELL")
+                            signal_colors.append("red")
+                    
+                    # Create DataFrame
                     projection_df = pd.DataFrame({
                         'Time Period': [time_periods[period] for period in projection_periods],
                         'Projected Price (₹)': [f"₹{price:.2f}" for price in projection_prices],
-                        'Change (%)': [f"{((price / current_close) - 1) * 100:.2f}%" for price in projection_prices]
+                        'Change (%)': [f"{change:.2f}%" for change in percent_changes],
+                        'Signal': signals
                     })
-                    st.dataframe(projection_df)
+                    
+                    # Display as a styled dataframe
+                    # Create a styling function
+                    def color_signal(val):
+                        if val == "STRONG BUY":
+                            return 'background-color: darkgreen; color: white'
+                        elif val == "BUY":
+                            return 'background-color: green; color: white'
+                        elif val == "HOLD":
+                            return 'background-color: orange; color: white'
+                        elif val == "SELL":
+                            return 'background-color: red; color: white'
+                        elif val == "STRONG SELL":
+                            return 'background-color: darkred; color: white'
+                        return ''
+                    
+                    # Apply styling and display
+                    styled_df = projection_df.style.applymap(color_signal, subset=['Signal'])
+                    st.dataframe(styled_df, use_container_width=True)
                     
                     # Display prediction chart
                     st.plotly_chart(prediction_results['prediction_chart'])

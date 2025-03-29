@@ -282,7 +282,8 @@ def create_prediction_chart(data, predictions, symbol):
     # Ensure we have proper data types in our arrays
     try:
         pred_x = [last_date] + [date for _, date in prediction_items]
-        pred_y = [float(data['Close'].iloc[-1])] + [float(predictions[period]) for period, _ in prediction_items]
+        current_price = float(data['Close'].iloc[-1])
+        pred_y = [current_price] + [float(predictions[period]) for period, _ in prediction_items]
     except (ValueError, TypeError) as e:
         # Handle potential conversion errors
         pred_x = [last_date] + [date for _, date in prediction_items]
@@ -306,20 +307,41 @@ def create_prediction_chart(data, predictions, symbol):
         )
     )
     
-    # Add markers for each prediction point
+    # Add markers for each prediction point with buy/sell signals
     for i, (period, date) in enumerate(prediction_items):
         try:
             # Handle any potential type conversion issues
             prediction_value = float(predictions[period])
+            
+            # Determine buy/sell signal based on percent change
+            percent_change = ((prediction_value / current_price) - 1) * 100
+            
+            if percent_change > 5:
+                signal = "STRONG BUY"
+                marker_color = "darkgreen"
+            elif percent_change > 2:
+                signal = "BUY"
+                marker_color = "green"
+            elif percent_change > -2:
+                signal = "HOLD"
+                marker_color = "orange"
+            elif percent_change > -5:
+                signal = "SELL"
+                marker_color = "red"
+            else:
+                signal = "STRONG SELL"
+                marker_color = "darkred"
+            
+            # Add marker with appropriate color and signal text
             fig.add_trace(
                 go.Scatter(
                     x=[date],
                     y=[prediction_value],
                     mode='markers+text',
                     name=f'{period} Projection',
-                    text=f'{period}: ₹{prediction_value:.2f}',
+                    text=f'{period}: ₹{prediction_value:.2f}<br>{signal}',
                     textposition='top center',
-                    marker=dict(size=10, color='green'),
+                    marker=dict(size=12, color=marker_color),
                     showlegend=False
                 )
             )
@@ -327,14 +349,39 @@ def create_prediction_chart(data, predictions, symbol):
             # Skip this prediction point if there's an error
             continue
     
+    # Add a legend for signals
+    legend_y = [min(pred_y) * 0.9] * 5
+    legend_x = [pred_x[0]] * 5
+    signals = ["STRONG BUY", "BUY", "HOLD", "SELL", "STRONG SELL"]
+    colors = ["darkgreen", "green", "orange", "red", "darkred"]
+    
+    # Add legend items as invisible traces
+    for signal, color in zip(signals, colors):
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode='markers',
+                name=signal,
+                marker=dict(size=10, color=color),
+            )
+        )
+    
     # Format chart
     fig.update_layout(
-        title=f"{symbol} Price Projections",
+        title=f"{symbol} Price Projections with Buy/Sell Signals",
         xaxis_title="Date",
         yaxis_title="Price (₹)",
         template="plotly_white",
         height=600,
-        showlegend=True
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5
+        )
     )
     
     return fig
