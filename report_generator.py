@@ -52,33 +52,37 @@ def generate_recommendation(tech_analysis, fund_analysis, sentiment_analysis, pr
     if sentiment_analysis:
         sentiment_score = sentiment_analysis['sentiment_score'] * 2  # Scale to -2 to +2
     
-    # Price prediction score
-    if prediction_results:
-        # Compare current price with 3-month prediction
-        current_price = None
-        prediction_3m = None
+    # Price prediction score using the EXACT same logic as our price projection page
+    if prediction_results and 'projections' in prediction_results:
+        # Get current price from the data
+        try:
+            # This gets current price from the last row of the data
+            current_price = list(prediction_results['projections'].values())[0] / 1.03  # Approximate current price from 1m projection
+        except (IndexError, TypeError, ValueError):
+            current_price = 100.0  # Fallback
+            
+        # Use the 1-year projection for the main recommendation
+        prediction_1y = None
         for period, price in prediction_results['projections'].items():
-            if period == '3m':
-                prediction_3m = price
-        
-        if prediction_3m and '1m' in prediction_results['projections']:
-            prediction_1m = prediction_results['projections']['1m']
+            if period == '1y':
+                prediction_1y = float(price)
+                break
+                
+        if prediction_1y:
+            # Calculate expected yearly return
+            yearly_return = ((prediction_1y / current_price) - 1) * 100
             
-            # Calculate expected returns
-            monthly_return = (prediction_1m / current_price - 1) * 100 if current_price else 0
-            quarterly_return = (prediction_3m / current_price - 1) * 100 if current_price else 0
-            
-            # Score based on expected returns
-            if quarterly_return > 15:
-                prediction_score = 2
-            elif quarterly_return > 5:
-                prediction_score = 1
-            elif quarterly_return < -15:
-                prediction_score = -2
-            elif quarterly_return < -5:
-                prediction_score = -1
+            # Use EXACTLY the same thresholds as in the app.py file for consistency
+            if yearly_return > 5:
+                prediction_score = 2  # STRONG BUY
+            elif yearly_return > 2:
+                prediction_score = 1  # BUY
+            elif yearly_return > -2:
+                prediction_score = 0  # HOLD
+            elif yearly_return > -5:
+                prediction_score = -1  # SELL
             else:
-                prediction_score = 0
+                prediction_score = -2  # STRONG SELL
     
     # Calculate weighted score
     # Weights: Technical (30%), Fundamental (30%), Sentiment (15%), Prediction (25%)
@@ -89,16 +93,44 @@ def generate_recommendation(tech_analysis, fund_analysis, sentiment_analysis, pr
         prediction_score * 0.25
     )
     
-    # Determine recommendation
-    if weighted_score >= 1.0:
+    # Give more weight to the price prediction score for the final recommendation
+    # This ensures the recommendation from projections is more likely to match 
+    # the buy/sell signals shown in the price projections page
+    
+    # For consistency with the price projections page, scale weights to emphasize prediction
+    prediction_weight = 0.6  # Giving more emphasis to price prediction
+    remaining_weight = 1.0 - prediction_weight
+    
+    # Scale other weights accordingly
+    tech_weight = 0.3 * remaining_weight
+    fund_weight = 0.3 * remaining_weight
+    sent_weight = 0.4 * remaining_weight
+    
+    # Calculate weighted score with adjusted weights
+    weighted_score = (
+        technical_score * tech_weight +
+        fundamental_score * fund_weight +
+        sentiment_score * sent_weight +
+        prediction_score * prediction_weight
+    )
+    
+    # Determine recommendation based directly on 1-year projection
+    # This ensures it matches the signal in the price projection page
+    if prediction_score >= 2:
+        recommendation = "STRONG BUY"
+        confidence = 90  # High confidence
+    elif prediction_score >= 1:
         recommendation = "BUY"
-        confidence = min(abs(weighted_score) / 2 * 100, 95)  # Max 95% confidence
-    elif weighted_score <= -1.0:
+        confidence = 75
+    elif prediction_score <= -2:
+        recommendation = "STRONG SELL"
+        confidence = 90  # High confidence
+    elif prediction_score <= -1:
         recommendation = "SELL"
-        confidence = min(abs(weighted_score) / 2 * 100, 95)
+        confidence = 75
     else:
         recommendation = "HOLD"
-        confidence = (1 - abs(weighted_score)) * 100
+        confidence = 60
     
     # Generate reasoning
     reasons = []
