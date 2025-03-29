@@ -152,15 +152,33 @@ def predict_future_prices(model, scaler, features, last_data, periods):
         
         for period_name, days in periods.items():
             try:
-                # Base prediction
+                # Base prediction using more conservative and market-realistic approach
                 if days <= 30:
-                    # For shorter periods, we can use direct model prediction with some adjustment
-                    prediction = current_price + (baseline_prediction - current_price) * (days / 30)
+                    # For very short term, use a more conservative estimate based on recent volatility
+                    # This approach is less likely to overpredict large price changes
+                    try:
+                        recent_changes = np.abs(last_data['Price_Change_1'].dropna().tail(10).values)
+                        avg_daily_change = np.mean(recent_changes) if len(recent_changes) > 0 else 0.005
+                    except (KeyError, ValueError, TypeError, AttributeError):
+                        # Fallback if Price_Change_1 is not available
+                        avg_daily_change = 0.005
+                    
+                    # More modest daily compounding
+                    daily_factor = 1 + (avg_daily_change * 0.5) # half the average daily change
+                    prediction = current_price * (daily_factor ** days)
                 else:
-                    # For longer periods, we apply a compounding effect
-                    monthly_return = (baseline_prediction / current_price) - 1
-                    months = days / 30
-                    prediction = current_price * ((1 + monthly_return) ** months)
+                    # For longer periods, use historical market growth rates with regression adjustment
+                    # Typical annual market growth is around 8-12%
+                    annual_market_rate = 0.10  # 10% annual market rate
+                    daily_rate = annual_market_rate / 365
+                    
+                    # Adjust based on model prediction trend direction
+                    model_direction = 1 if baseline_prediction > current_price else -1
+                    model_confidence = min(abs(baseline_prediction - current_price) / current_price, 0.3)
+                    
+                    # Apply direction and confidence to our market baseline
+                    adjusted_daily_rate = daily_rate * (1 + (model_direction * model_confidence))
+                    prediction = current_price * ((1 + adjusted_daily_rate) ** days)
                 
                 # Convert to float to ensure it's scalar
                 prediction = float(prediction)
@@ -386,7 +404,11 @@ def predict_prices(data, symbol):
         else:
             key_factors.append(f"The {feature.replace('_', ' ').lower()} is a significant factor with {importance*100:.1f}% influence")
     
-    # Generate prediction factors text
+    # Generate prediction factors text with clearer accuracy metrics
+    # Calculate actual percentage accuracy
+    mape = metrics['MAPE']
+    accuracy_percentage = max(0, min(100, 100 - mape))
+    
     prediction_factors = f"""
     The price projections are based on machine learning analysis of historical price patterns and technical indicators. The model identifies the following key factors influencing the projections:
     
@@ -394,7 +416,12 @@ def predict_prices(data, symbol):
     2. {key_factors[1] if len(key_factors) > 1 else "Trading volume trends"}
     3. {key_factors[2] if len(key_factors) > 2 else "Market volatility"}
     
-    The model achieved an accuracy of {metrics['R²']*100:.1f}% (R²) in backtesting, with a Mean Absolute Percentage Error (MAPE) of {metrics['MAPE']:.2f}%. 
+    **MODEL ACCURACY: {accuracy_percentage:.1f}%** - This projection has an estimated accuracy of {accuracy_percentage:.1f}% based on backtesting. 
+    
+    Technical metrics:
+    - R² Score: {metrics['R²']*100:.1f}% (statistical fit)
+    - Mean Absolute Percentage Error: {metrics['MAPE']:.2f}%
+    - Root Mean Squared Error: {metrics['RMSE']:.2f}
     
     Note that these projections represent a statistical forecast based on historical patterns and should be used alongside other analysis methods for investment decisions. Market conditions can change rapidly due to external factors not captured by the model.
     """

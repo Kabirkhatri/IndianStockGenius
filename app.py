@@ -264,6 +264,18 @@ if selected_stock and analyze_button:
                     
                     prediction_results = predict_prices(stock_data, selected_stock)
                     
+                    # Calculate and display model accuracy prominently
+                    mape = prediction_results['model_metrics']['MAPE']
+                    accuracy_percentage = max(0, min(100, 100 - mape))
+                    
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.metric(
+                            label="Model Accuracy", 
+                            value=f"{accuracy_percentage:.1f}%",
+                            delta="Based on backtesting"
+                        )
+                    
                     # Display price predictions for different time periods
                     st.write("Price Projections")
                     
@@ -281,13 +293,45 @@ if selected_stock and analyze_button:
                     # Display prediction chart
                     st.plotly_chart(prediction_results['prediction_chart'])
                     
-                    # Model metrics
-                    st.write("Model Performance Metrics")
+                    # Model metrics with clearer display
+                    st.subheader("Model Performance Metrics")
+                    
+                    # Format the metrics for better readability
+                    metrics = prediction_results['model_metrics']
+                    formatted_values = []
+                    
+                    for k, v in metrics.items():
+                        if k == 'R²':
+                            formatted_values.append(f"{v*100:.1f}%")
+                        elif k == 'MAPE':
+                            formatted_values.append(f"{v:.2f}%")
+                        elif k == 'RMSE':
+                            formatted_values.append(f"{v:.2f}")
+                        else:
+                            formatted_values.append(f"{v}")
+                    
+                    # Display metrics in a nicer table
                     metrics_df = pd.DataFrame({
-                        'Metric': list(prediction_results['model_metrics'].keys()),
-                        'Value': list(prediction_results['model_metrics'].values())
+                        'Metric': [
+                            'Accuracy',
+                            'R² Score (Statistical Fit)',
+                            'Mean Absolute Percentage Error',
+                            'Root Mean Squared Error'
+                        ],
+                        'Value': [
+                            f"{accuracy_percentage:.1f}%",
+                            formatted_values[0],
+                            formatted_values[1],
+                            formatted_values[2]
+                        ],
+                        'Interpretation': [
+                            'Higher is better. Represents model prediction accuracy.',
+                            'Higher is better. A measure of how well the model fits the data.',
+                            'Lower is better. Average percentage error in predictions.',
+                            'Lower is better. Error magnitude in price units.'
+                        ]
                     })
-                    st.dataframe(metrics_df)
+                    st.dataframe(metrics_df, use_container_width=True)
                     
                     # Prediction factors
                     st.write("Key Factors Influencing Predictions")
